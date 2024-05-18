@@ -1,0 +1,45 @@
+name: moduleTest
+
+on: [push]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 檢出代碼
+      - name: 檢出代碼
+        uses: actions/checkout@v2
+
+      # 打包步驟
+      - name: 打包文件
+        run: |
+          mkdir release
+          cp LICENSE README.md src/Dockerfile src/init.sh release/
+          cp -r spring release/spring/
+
+      # 上傳打包文件(upload-artifact已自動zip)
+      - name: 上傳打包文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release
+
+      # 部署及執行Docker容器
+      - name: 部署及執行 Docker 容器
+        run: |
+          cd release
+          docker build . -t spring4shell
+          docker run -p 8080:8080 spring4shell &
+
+      # 準備測試環境(須配合pipenv版本)
+      - name: 準備 Python 測試環境
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10.10'
+
+      # 執行測試
+      - name: 執行測試
+        run: |
+          pip install requests
+          python src/exploit.py --url "http://localhost:8080/helloworld/greeting"
